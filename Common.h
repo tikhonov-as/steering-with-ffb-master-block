@@ -1,0 +1,44 @@
+#ifndef COMMON_H
+#define COMMON_H
+
+#define ANALOG_OUT_MIN_VALUE 0
+#define ANALOG_OUT_MAX_VALUE 1023
+#define ANALOG_OUT_MAX_VALUE_10bit 1023
+#define ANALOG_OUT_MAX_VALUE_12bit 4095
+#define ANALOG_OUT_MAX_VALUE_14bit 16383
+#define ANALOG_OUT_MAX_VALUE_16bit 65535
+
+#define ADS1115_ADDRESS_GND 0x48
+#define ADS1115_ADDRESS_VDD 0x49
+#define ADS1115_ADDRESS_SDA 0x4a
+#define ADS1115_ADDRESS_SCL 0x4b // при соединении напрямую - подсаживает линию SCL. работает только с короткким проводом, длиннее - виснет
+#define ADS1115_NONSIGNIFICANT_BITS 4
+
+#define PCF8574_ADDRESS_0 0x20
+#define PCF8574_ADDRESS_1 0x21
+#define PCF8574_ADDRESS_2 0x22
+#define PCF8574_ADDRESS_3 0x23
+#define PCF8574_ADDRESS_4 0x24
+#define PCF8574_ADDRESS_5 0x25
+#define PCF8574_ADDRESS_6 0x26
+#define PCF8574_ADDRESS_7 0x27
+
+// #define PCA9685_ADDRESS_0  0x40
+// #define PCA9685_ADDRESS_1  0x41
+// #define PCA9685_ADDRESS_2  0x42
+// #define PCA9685_ADDRESS_3  0x43
+// #define PCA9685_ADDRESS_4  0x44
+// #define PCA9685_ADDRESS_5  0x45
+// #define PCA9685_ADDRESS_6  0x46
+// #define PCA9685_ADDRESS_7  0x47
+// #define PCA9685_ADDRESS_8  0x48
+// #define PCA9685_ADDRESS_9  0x49
+// #define PCA9685_ADDRESS_10 0x4A
+// #define PCA9685_ADDRESS_11 0x4B
+// #define PCA9685_ADDRESS_12 0x4C
+// #define PCA9685_ADDRESS_13 0x4D
+// #define PCA9685_ADDRESS_14 0x4E
+// #define PCA9685_ADDRESS_15 0x4F
+// #define PCA9685_ADDRESS_ALL_CALL 0x70
+
+#endif

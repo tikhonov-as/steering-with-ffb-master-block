@@ -1,6 +1,9 @@
+/*/
 #pragma once
 
 #include "Arduino.h"
+
+#define MOVING_AVERAGE_SIZE 5
 
 class MovingAverage {
 private:
@@ -20,3 +23,4 @@ public:
     MovingAverage& update(int newValue);
     int getAverage();
 };
+ /**/

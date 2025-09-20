@@ -1,3 +1,4 @@
+/*/
 #include "MovingAverage.h"
 
 // Реализация конструктора
@@ -30,3 +31,4 @@ MovingAverage& MovingAverage::update(int newValue) {
 int MovingAverage::getAverage() {
     return sum / size;
 }
+ /**/
