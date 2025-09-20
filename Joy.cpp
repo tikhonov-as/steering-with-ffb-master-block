@@ -1,3 +1,4 @@
+#include "Joy.h"
 /*/
  processForces(    effectparams[0].springMaxPosition = 512;
     effectparams[0].springPosition = steeringFilteredValue - 512;

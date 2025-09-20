@@ -1,5 +1,6 @@
-/*/
 #include "MovingAverage.h"
+
+/*/
 
 // Реализация конструктора
 MovingAverage::MovingAverage(int bufferSize) {

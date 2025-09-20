@@ -1,3 +1,5 @@
+#include "Handbrake.h"
+
 // handbrakeAverageFilter = new MovingAverage(MOVING_AVERAGE_SIZE);
 /*/
 setup

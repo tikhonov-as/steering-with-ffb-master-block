@@ -1,3 +1,5 @@
+#include "Gearbox.h"
+
 /*/
 
 void sendGearboxButtons(uint32_t states) {

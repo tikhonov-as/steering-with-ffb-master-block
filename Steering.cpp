@@ -1,3 +1,5 @@
+#include "Steering.h"
+
 // steeringAverageFilter = new MovingAverage(MOVING_AVERAGE_SIZE);
 /*/
 
