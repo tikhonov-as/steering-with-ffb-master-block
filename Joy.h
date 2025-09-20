@@ -8,14 +8,15 @@ namespace S418 {
     namespace Steering {
         class Joy {
             public:
-                Joystick_ *joystick;
+                Joystick_* joystick;
 
-                Joy(Joystick_ *joystick);
+                Joy();
+                Joy(Joystick_* joystick);
                 void setup();
                 void processForces();
             private:
                 void setupTimerInterrupt();
-        }
+        };
     }
 }
 

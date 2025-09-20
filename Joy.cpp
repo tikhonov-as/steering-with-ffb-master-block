@@ -15,7 +15,11 @@
 
 namespace S418 {
     namespace Steering {
-        Joy::Joy(Joystick_ joystick) {
+        Joy::Joy() {
+
+        }
+
+        Joy::Joy(Joystick_* joystick) {
             // todo сохранить в private-поле
             this->joystick = joystick;
         }
@@ -36,7 +40,7 @@ namespace S418 {
             gains[1].totalGain = 100;
             gains[1].springGain = 100;
             /**/
-            this->joystick->setGains(gains);
+            //this->joystick->setGains(gains);
             this->joystick->begin(true);
         }
 

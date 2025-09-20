@@ -15,8 +15,8 @@
 // кнопки 25-40 - кнопки ButtonBox1
 // кнопки 41-45 - кнопки Ignition
 
-Joystick_ joystick;
-S418::Steering::Joy joy;
+Joystick_* joystick;
+S418::Steering::Joy* joy;
 //S418::Steering::Pedals pedals;
 //S418::Steering::Gearbox gearbox;
 //S418::Steering::Handbrake handbrake;
@@ -24,7 +24,7 @@ S418::Steering::Joy joy;
 //S418::Steering::Buttonbox buttonbox;
 
 ISR(TIMER3_COMPA_vect){
-    joystick.getUSBPID();
+    joystick->getUSBPID();
 }
 
 void setup() {
@@ -48,13 +48,13 @@ void setup() {
             false, false,            // rudder throttle
             false, false, false      // accelerator brake steering
     );
-    joy = new Joy(joystick);
-//    steering = new Steering(joystick);
-//    pedals = new Pedals(joystick);
-//    gearbox = new Gearbox(joystick);
-//    handbrake = new Handbrake(joystick);
-//    ignition = new Ignition(joystick);
-//    buttonbox = new Buttonbox(joystick);
+    joy = new S418::Steering::Joy(joystick);
+//    steering = new S418::Steering::Steering(joystick);
+//    pedals = new S418::Steering::Pedals(joystick);
+//    gearbox = new S418::Steering::Gearbox(joystick);
+//    handbrake = new S418::Steering::Handbrake(joystick);
+//    ignition = new S418::Steering::Ignition(joystick);
+//    buttonbox = new S418::Steering::Buttonbox(joystick);
 
 //    joy.setup();
 //    steering.setup();
