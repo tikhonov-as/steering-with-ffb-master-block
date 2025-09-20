@@ -4,11 +4,6 @@
 #include "ADS1115_WE.h"
 #include "MovingAverage.h"
 
-inline bool isBitSet(uint32_t state, uint8_t bit) {
- if (bit > 31) return false;
- return (state & (static_cast<uint32_t>(1) << bit)) != 0;
-}
-
 bool debug = false;
 
 int32_t forces[2] = {0};
@@ -37,12 +32,6 @@ EffectParams effectparams[2];
 #define ANALOG_OUT_MAX_VALUE_14bit 16383
 #define ANALOG_OUT_MAX_VALUE_16bit 65535
 
-#define ADS1115_ADDRESS_GND 0x48
-#define ADS1115_ADDRESS_VDD 0x49
-#define ADS1115_ADDRESS_SDA 0x4a
-#define ADS1115_ADDRESS_SCL 0x4b // при соединении напрямую - подсаживает линию SCL. работает только с короткким проводом, длиннее - виснет
-#define ADS1115_NONSIGNIFICANT_BITS 4
-
 #define PCF8574_ADDRESS_0 0x20
 #define PCF8574_ADDRESS_1 0x21
 #define PCF8574_ADDRESS_2 0x22
@@ -52,6 +41,29 @@ EffectParams effectparams[2];
 #define PCF8574_ADDRESS_6 0x26
 #define PCF8574_ADDRESS_7 0x27
 
+// #define PCA9685_ADDRESS_0  0x40
+// #define PCA9685_ADDRESS_1  0x41
+// #define PCA9685_ADDRESS_2  0x42
+// #define PCA9685_ADDRESS_3  0x43
+// #define PCA9685_ADDRESS_4  0x44
+// #define PCA9685_ADDRESS_5  0x45
+// #define PCA9685_ADDRESS_6  0x46
+// #define PCA9685_ADDRESS_7  0x47
+// #define PCA9685_ADDRESS_8  0x48
+// #define PCA9685_ADDRESS_9  0x49
+// #define PCA9685_ADDRESS_10 0x4A
+// #define PCA9685_ADDRESS_11 0x4B
+// #define PCA9685_ADDRESS_12 0x4C
+// #define PCA9685_ADDRESS_13 0x4D
+// #define PCA9685_ADDRESS_14 0x4E
+// #define PCA9685_ADDRESS_15 0x4F
+// #define PCA9685_ADDRESS_ALL_CALL 0x70
+
+#define ADS1115_ADDRESS_GND 0x48
+#define ADS1115_ADDRESS_VDD 0x49
+#define ADS1115_ADDRESS_SDA 0x4a
+#define ADS1115_ADDRESS_SCL 0x4b // при соединении напрямую - подсаживает линию SCL. работает только с короткким проводом, длиннее - виснет
+#define ADS1115_NONSIGNIFICANT_BITS 4
 
 #define I2C_ADDRESS_STEERING_BLOCK 0x09
 #define I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS1 0x6a
@@ -59,6 +71,13 @@ EffectParams effectparams[2];
 #define I2C_ADDRESS_GEARBOX 0x63
 #define I2C_ADDRESS_PEDALS ADS1115_ADDRESS_VDD
 #define I2C_ADDRESS_BUTTON_BOX PCF8574_ADDRESS_0
+#define I2C_ADDRESS_IGNITION_PORT PCF8574_ADDRESS_2
+
+#define IGNITION_PIN_ACC 0
+#define IGNITION_PIN_ST  1
+#define IGNITION_PIN_BAT 2
+#define IGNITION_PIN_IG  3
+#define IGNITION_PIN_BTN 4
 
 int32_t steeringActualValue = 0;
 int32_t steeringScaledValue = 0;
@@ -85,8 +104,13 @@ MovingAverage handbrakeAverageFilter(MOVING_AVERAGE_SIZE);
 
 ADS1115_WE adcPedals = ADS1115_WE(I2C_ADDRESS_PEDALS);
 
+// кнопки 1-15 - стоковые на руле. DPad (Hat) - отдельно. Кнопка Prog не считается номерной кнопкой контроллера (т.е. служебная)
+// кнопки 16-24 - кнопки КПП
+// кнопки 25-40 - кнопки ButtonBox1
+// кнопки 41-45 - кнопки Ignition
+
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK, // // JOYSTICK_TYPE_MULTI_AXIS
-                   40, 1,                 // Button Count, Hat Switch Count
+                   45, 1,                 // Button Count, Hat Switch Count
                    true, true, true,      // X Y Z // STEERING CLUTCH BRAKE
                    true, false,  true,     // Rx Ry Rz // ACCEL ? HANDBRAKE
                    false, false,          // rudder throttle
@@ -95,6 +119,17 @@ Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK, // // JOY
 bool ledState = false;
 
 PCF8574 buttonBoxPort(I2C_ADDRESS_BUTTON_BOX);
+PCF8574 ignitionKeyPort(I2C_ADDRESS_IGNITION_PORT);
+
+typedef struct {
+    bool acc_bat;
+    bool acc_ig;
+    bool st_bat;
+    bool st_ig;
+    bool button;
+    uint8_t keyPos;
+} KeyStateData;
+
 
 // int32_t  currentPosition = 0;
 // volatile int8_t oldState = 0;
@@ -120,6 +155,11 @@ PCF8574 buttonBoxPort(I2C_ADDRESS_BUTTON_BOX);
 // 0x27
 // PCF8575 buttonBoxPort(0x21);
 // PCF8575 simpleButtonsPort(0x27);
+
+inline bool isBitSet(uint32_t state, uint8_t bit) {
+ if (bit > 31) return false;
+ return (state & (static_cast<uint32_t>(1) << bit)) != 0;
+}
 
 void setupAds1115Pedals()
 {
@@ -256,6 +296,9 @@ uint16_t readButtonBox()
 
     // Инвертируем результат, чтобы активные кнопки были 1
     // return ~buttonState & 0xFFFF;
+
+    // Serial.print("buttonState: ");
+    // Serial.println(buttonState);
     return buttonState;
 }
 void sendButtonBoxState(uint16_t buttonStates)
@@ -273,12 +316,9 @@ void processSteeringButtons() {
     sendSteeringButtons(readSteeringButons());
 }
 
-
 uint32_t readSteeringButons() {
     uint32_t result = 0;
     byte byte1, byte2, byte3;
-
-    bool canShow = setInterval(500);
 
     Wire.beginTransmission(I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS1);
     Wire.write(0x00);
@@ -297,15 +337,6 @@ uint32_t readSteeringButons() {
     byte2 = Wire.read();
     byte3 = Wire.read();
 
-    if (canShow) {
-        Serial.print("byte1:");
-        Serial.println(byte1);
-        Serial.print("byte2:");
-        Serial.println(byte2);
-        Serial.print("byte3:");
-        Serial.println(byte3);
-    }
-
     // Объединяем биты из трех байтов в одно 20-битное значение
     result = 
         // Байты читаются слева направо, биты объединяются от младших к старшим
@@ -316,11 +347,6 @@ uint32_t readSteeringButons() {
         // byte3 занимает биты 13-19 (берем 7 бит)
         ((static_cast<uint32_t>(byte3 & 0x7F) << 13));
 
-    if (canShow) {
-        Serial.print("result:");
-        Serial.println(result);
-    }
-    
     return result;
 }
 
@@ -381,29 +407,39 @@ void sendGearboxButtons(uint32_t states) {
     Joystick.setButton(23, isBitSet(states, 7));    // btn2
 }
 
-/*/
-typedef struct {
-    bool acc_bat;
-    bool acc_ig;
-    bool st_bat;
-    bool st_ig;
-    uint8_t keyPos;
-} KeyStateData;
+void setupIgnitionKey() {
+    ignitionKeyPort.pinMode(IGNITION_PIN_ACC, OUTPUT);
+    ignitionKeyPort.pinMode(IGNITION_PIN_ST, OUTPUT);
+    
+    ignitionKeyPort.pinMode(IGNITION_PIN_BAT, INPUT_PULLUP);
+    ignitionKeyPort.pinMode(IGNITION_PIN_IG, INPUT_PULLUP);
+    
+    ignitionKeyPort.pinMode(IGNITION_PIN_BTN, INPUT_PULLUP);
 
-KeyStateData readIgnitionKeyPosition() {
+    ignitionKeyPort.begin();
+
+    ignitionKeyPort.digitalWrite(IGNITION_PIN_ACC, HIGH);
+    ignitionKeyPort.digitalWrite(IGNITION_PIN_ST, HIGH);
+}
+
+void processIgnitionKeyState() {
+    sendIgnitionKeyState(readIgnitionKeyState());
+}
+
+KeyStateData readIgnitionKeyState() {
     KeyStateData data;
     
-    // Проверка соединений с ACC
-    digitalWrite(PIN_ACC, 0);
-    digitalWrite(PIN_ST, 1);
-    data.acc_bat = digitalRead(PIN_BAT);
-    data.acc_ig = digitalRead(PIN_IG);
+    ignitionKeyPort.digitalWrite(IGNITION_PIN_ACC, LOW);
+    // ignitionKeyPort.digitalWrite(IGNITION_PIN_ST, HIGH);
+    data.acc_bat = ignitionKeyPort.digitalRead(IGNITION_PIN_BAT);
+    data.acc_ig = ignitionKeyPort.digitalRead(IGNITION_PIN_IG);
     
-    // Проверка соединений с ST
-    digitalWrite(PIN_ACC, 1);
-    digitalWrite(PIN_ST, 0);
-    data.st_bat = digitalRead(PIN_BAT);
-    data.st_ig = digitalRead(PIN_IG);
+    ignitionKeyPort.digitalWrite(IGNITION_PIN_ACC, HIGH);
+    ignitionKeyPort.digitalWrite(IGNITION_PIN_ST, LOW);
+    data.st_bat = ignitionKeyPort.digitalRead(IGNITION_PIN_BAT);
+    data.st_ig = ignitionKeyPort.digitalRead(IGNITION_PIN_IG);
+
+    ignitionKeyPort.digitalWrite(IGNITION_PIN_ST, HIGH);
     
     uint8_t keyState = (data.acc_bat << 0) | 
                       (data.acc_ig << 1) | 
@@ -417,10 +453,19 @@ KeyStateData readIgnitionKeyPosition() {
         case 0b1100: data.keyPos = 4; break;
         default: data.keyPos = 0; break;
     }
+
+    data.button = ignitionKeyPort.digitalRead(IGNITION_PIN_BTN);
     
     return data;
 }
-/**/
+
+void sendIgnitionKeyState(KeyStateData state) {
+    Joystick.setButton(40, state.keyPos == 1);
+    Joystick.setButton(41, state.keyPos == 2);
+    Joystick.setButton(42, state.keyPos == 3);
+    Joystick.setButton(43, state.keyPos == 4);
+    Joystick.setButton(44, state.button == 0);
+}
 
 void setup() {
     Serial.begin(115200);
@@ -430,6 +475,7 @@ void setup() {
     pinMode(ANALOG_INPUT_HANDBRAKE, INPUT);
     setupAds1115Pedals();
     setupButtonBox1();
+    setupIgnitionKey();
 
     Joystick.setXAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setZAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
@@ -463,7 +509,7 @@ void loop() {
     steeringScaledValue = steeringActualValue;
     steeringFilteredValue = steeringAverageFilter.update(steeringScaledValue).getAverage();
     Joystick.setXAxis(steeringFilteredValue);
-
+/**/
     //--------------------------------------------------------------
     // processPedals
     int* pedalsValues = readAds1115Channels(adcPedals);
@@ -487,7 +533,7 @@ void loop() {
     handbrakeScaledValue = constrain(map(handbrakeActualValue, HANDBRAKE_MIN_VALUE, HANDBRAKE_MAX_VALUE, ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE), ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     handbrakeFilteredValue = handbrakeAverageFilter.update(handbrakeScaledValue).getAverage();
     Joystick.setRxAxis(handbrakeFilteredValue);
-
+/**/
     //--------------------------------------------------------------
     // processForces
     effectparams[0].springMaxPosition = 512;
@@ -502,6 +548,7 @@ void loop() {
     //--------------------------------------------------------------
     processSteeringButtons();
     processButtonBox();
+    processIgnitionKeyState();
 
     //--------------------------------------------------------------
     // debug
