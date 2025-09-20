@@ -16,6 +16,7 @@
 // кнопки 41-45 - кнопки Ignition
 
 Joystick_ joystick;
+S418::Steering::Joy joy;
 //S418::Steering::Pedals pedals;
 //S418::Steering::Gearbox gearbox;
 //S418::Steering::Handbrake handbrake;
@@ -47,7 +48,7 @@ void setup() {
             false, false,            // rudder throttle
             false, false, false      // accelerator brake steering
     );
-//    joy = new Joy(joystick);
+    joy = new Joy(joystick);
 //    steering = new Steering(joystick);
 //    pedals = new Pedals(joystick);
 //    gearbox = new Gearbox(joystick);
