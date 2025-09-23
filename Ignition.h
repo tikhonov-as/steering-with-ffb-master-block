@@ -1,8 +1,9 @@
-/*/
 #ifndef IGNITION_H
 #define IGNITION_H
 
 #include "Arduino.h"
+#include "Joystick.h"
+#include "Common.h"
 #include "PCF8574.h"
 
 #define I2C_ADDRESS_IGNITION_PORT PCF8574_ADDRESS_2
@@ -21,6 +22,20 @@ typedef struct {
     uint8_t keyPos;
 } KeyStateData;
 
+namespace S418 {
+    namespace Steering {
+        class Ignition {
+        public:
+            Joystick_* joystick;
+
+            Ignition();
+            Ignition(Joystick_ *joystick);
+            void setup();
+
+        private:
+        };
+    }
+}
+
 // PCF8574 ignitionKeyPort(I2C_ADDRESS_IGNITION_PORT)
 #endif
-/**/

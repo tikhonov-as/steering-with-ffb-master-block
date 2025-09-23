@@ -1,8 +1,9 @@
-/*/
 #ifndef HANDBRAKE_H
 #define HANDBRAKE_H
 
 #include "Arduino.h"
+#include "Joystick.h"
+#include "Common.h"
 #include "MovingAverage.h"
 
 #define HANDBRAKE_MIN_VALUE 492
@@ -11,18 +12,22 @@
 
 namespace S418 {
     namespace Steering {
-        class Steering {
+        class Handbrake {
         public:
-            uint32_t handbrakeValue;
+            Joystick_* joystick;
+//            uint32_t handbrakeValue;
+
+            Handbrake();
+            Handbrake(Joystick_ *joystick);
+            void setup();
 
         private:
-            uint32_t handbrakeActualValue;
-            uint32_t handbrakeScaledValue;
+//            uint32_t handbrakeActualValue;
+//            uint32_t handbrakeScaledValue;
 
-            MovingAverage handbrakeAverageFilter;
+//            MovingAverage handbrakeAverageFilter;
         };
     }
 }
 
 #endif
-/**/

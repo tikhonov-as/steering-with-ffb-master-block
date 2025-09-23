@@ -1,4 +1,3 @@
-/*/
 #pragma once
 
 #include "Arduino.h"
@@ -14,8 +13,9 @@ private:
 
 public:
     // Конструктор
+    MovingAverage();
     MovingAverage(int bufferSize);
-    
+
     // Деструктор
     ~MovingAverage();
     

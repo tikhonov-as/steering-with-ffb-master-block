@@ -1,5 +1,55 @@
 #include "Steering.h"
 
+namespace S418 {
+    namespace Steering {
+        Steering::Steering() {
+
+        }
+
+        Steering::Steering(Joystick_& joystick) {
+            this->joystick = &joystick;
+        }
+
+        void Steering::setup() {
+
+        }
+
+        /**
+         * Операции чтения
+         */
+        void Steering::processInputOperations() {
+
+            int16_t steeringActualValue = readSteeringAngle();
+            //Serial.println(steeringActualValue);
+            if (steeringActualValue == -1) {
+                return;
+            }
+            uint16_t steeringFilteredValue = steeringAverageFilter.update(steeringActualValue).getAverage();
+
+            joystick->setXAxis(steeringFilteredValue);
+        }
+
+        int16_t Steering::readSteeringAngle() {
+            Wire.beginTransmission(I2C_ADDRESS_STEERING_BLOCK);
+            Wire.endTransmission();
+
+            Wire.requestFrom(I2C_ADDRESS_STEERING_BLOCK, 2);  // Запрашиваем 2 байта (uint16_t)
+//            Serial.print("b ");
+//            Serial.println(Wire.available());
+            while (Wire.available() < 2);
+            if (Wire.available() == 2) {
+                uint16_t angle = Wire.read() | (Wire.read() << 8);
+
+//                Serial.print("a ");
+//                Serial.println(angle);
+
+                return angle;
+            }
+            return -1;
+        }
+    }
+}
+
 // steeringAverageFilter = new MovingAverage(MOVING_AVERAGE_SIZE);
 /*/
 
@@ -7,19 +57,6 @@ int32_t forces[2] = {0};
 Gains gains[2];
 EffectParams effectparams[2];
 
- int16_t readSteeringValue() {
-    Wire.beginTransmission(I2C_ADDRESS_STEERING_BLOCK);
-    Wire.endTransmission();
-
-    Wire.requestFrom(I2C_ADDRESS_STEERING_BLOCK, 2);  // Запрашиваем 2 байта (uint16_t)
-
-    if (Wire.available() == 2) {
-        uint16_t angle = Wire.read() | (Wire.read() << 8);
-
-        return angle;
-    }
-    return -1;
-}
 
  // -255 .. 255
 void sendForce(int32_t ffbValue) {
@@ -119,5 +156,10 @@ void sendSteeringButtons(uint32_t states) {
     steeringFilteredValue = steeringAverageFilter.update(steeringScaledValue).getAverage();
     joystick.setXAxis(steeringFilteredValue);
 }
+
+ void setForce()
+ {
+
+ }
 
 /**/

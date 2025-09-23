@@ -1,8 +1,10 @@
 #include "MovingAverage.h"
 
-/*/
+MovingAverage::MovingAverage() {
+    index = 0;
+    sum = 0;
+}
 
-// Реализация конструктора
 MovingAverage::MovingAverage(int bufferSize) {
     size = bufferSize;
     buffer = new int[size];
@@ -32,4 +34,3 @@ MovingAverage& MovingAverage::update(int newValue) {
 int MovingAverage::getAverage() {
     return sum / size;
 }
- /**/

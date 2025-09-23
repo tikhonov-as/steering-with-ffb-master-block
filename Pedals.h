@@ -1,8 +1,9 @@
-/*/
 #ifndef PEDALS_H
 #define PEDALS_H
 
 #include "Arduino.h"
+#include "Joystick.h"
+#include "Common.h"
 #include "ADS1115_WE.h"
 #include "MovingAverage.h"
 
@@ -19,41 +20,46 @@ namespace S418 {
     namespace Steering {
         class Pedals {
         public:
+            Joystick_* joystick;
+
             Pedals();
+            Pedals(Joystick_ *joystick);
             void setup();
-            void process();
-            uint16_t getClutchValue();
-            uint16_t getBrakeValue();
-            uint16_t getAccelerationValue();
+
+//            void setup();
+//            void process();
+//            uint16_t getClutchValue();
+//            uint16_t getBrakeValue();
+//            uint16_t getAccelerationValue();
             
         private:
-            ADS1115_WE ads;
-
-            uint16_t clutchActualValue;
-            uint16_t clutchScaledValue;
-
-            uint16_t brakeActualValue;
-            uint16_t brakeScaledValue;
-
-            uint16_t accelActualValue;
-            uint16_t accelScaledValue;
-            uint16_t accelFilteredValue;
-
-            uint16_t clutchValue;
-            uint16_t brakeValue;
-            uint16_t accelerationValue;
-
-            MovingAverage clutchAverageFilter;
-            MovingAverage brakeAverageFilter;
-            MovingAverage accelAverageFilter;
-
-            void read();
-            void send();
-
-            uint16_t* readAds1115Channels();
-            uint16_t readAds1115ChannelRaw(ADS1115_MUX channel);
+//            ADS1115_WE ads;
+//
+//            uint16_t clutchActualValue;
+//            uint16_t clutchScaledValue;
+//
+//            uint16_t brakeActualValue;
+//            uint16_t brakeScaledValue;
+//
+//            uint16_t accelActualValue;
+//            uint16_t accelScaledValue;
+//            uint16_t accelFilteredValue;
+//
+//            uint16_t clutchValue;
+//            uint16_t brakeValue;
+//            uint16_t accelerationValue;
+//
+//            MovingAverage clutchAverageFilter;
+//            MovingAverage brakeAverageFilter;
+//            MovingAverage accelAverageFilter;
+//
+//            void read();
+//            void send();
+//
+//            uint16_t* readAds1115Channels();
+//            uint16_t readAds1115ChannelRaw(ADS1115_MUX channel);
+        };
     }
 }
 
 #endif
-/**/
