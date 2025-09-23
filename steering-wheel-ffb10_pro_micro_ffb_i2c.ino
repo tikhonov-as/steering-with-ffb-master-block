@@ -10,7 +10,6 @@ int32_t forces[2] = {0};
 Gains gains[2];
 EffectParams effectparams[2];
 
-
 #define ANALOG_INPUT_HANDBRAKE A9 // Rx
 
 // это прочитанные значения с ADC
@@ -129,32 +128,6 @@ typedef struct {
     bool button;
     uint8_t keyPos;
 } KeyStateData;
-
-
-// int32_t  currentPosition = 0;
-// volatile int8_t oldState = 0;
-// const int8_t KNOBDIR[] = {
-//   0, 1, -1, 0,
-//   -1, 0, 0, 1,
-//   1, 0, 0, -1,
-//   0, -1, 1, 0
-// };
-
-// void readEncoderValue(void)
-// {
-//   int sig1 = digitalReadFast(encoderPinA);
-//   int sig2 = digitalReadFast(encoderPinB);
-//   int8_t thisState = sig1 | (sig2 << 1);
-
-//   if (oldState != thisState) {
-//     currentPosition += KNOBDIR[thisState | (oldState<<2)];
-//     oldState = thisState;
-//   } 
-// }
-
-// 0x27
-// PCF8575 buttonBoxPort(0x21);
-// PCF8575 simpleButtonsPort(0x27);
 
 inline bool isBitSet(uint32_t state, uint8_t bit) {
  if (bit > 31) return false;
@@ -569,21 +542,20 @@ KeyStateData readIgnitionKeyState() {
     KeyStateData data;
 
     ignitionKeyPort.digitalWrite(IGNITION_PIN_ACC, LOW);
-    // ignitionKeyPort.digitalWrite(IGNITION_PIN_ST, HIGH);
-    data.acc_bat = ignitionKeyPort.digitalRead(IGNITION_PIN_BAT);
-    data.acc_ig = ignitionKeyPort.digitalRead(IGNITION_PIN_IG);
+    data.acc_bat = ignitionKeyPort.digitalRead(IGNITION_PIN_BAT, true);
+    data.acc_ig = ignitionKeyPort.digitalRead(IGNITION_PIN_IG, true);
 
     ignitionKeyPort.digitalWrite(IGNITION_PIN_ACC, HIGH);
     ignitionKeyPort.digitalWrite(IGNITION_PIN_ST, LOW);
-    data.st_bat = ignitionKeyPort.digitalRead(IGNITION_PIN_BAT);
-    data.st_ig = ignitionKeyPort.digitalRead(IGNITION_PIN_IG);
+    data.st_bat = ignitionKeyPort.digitalRead(IGNITION_PIN_BAT, true);
+    data.st_ig = ignitionKeyPort.digitalRead(IGNITION_PIN_IG, true);
 
     ignitionKeyPort.digitalWrite(IGNITION_PIN_ST, HIGH);
 
-    uint8_t keyState = (data.acc_bat << 0) |
-                       (data.acc_ig << 1) |
-                       (data.st_bat << 2) |
-                       (data.st_ig << 3);
+    uint8_t keyState = (!data.acc_bat << 0) |
+                       (!data.acc_ig << 1) |
+                       (!data.st_bat << 2) |
+                       (!data.st_ig << 3);
 
     switch (keyState) {
         case 0b0001: data.keyPos = 1; break;
@@ -593,7 +565,7 @@ KeyStateData readIgnitionKeyState() {
         default: data.keyPos = 0; break;
     }
 
-    data.button = ignitionKeyPort.digitalRead(IGNITION_PIN_BTN);
+    data.button = ignitionKeyPort.digitalRead(IGNITION_PIN_BTN, true);
 
     return data;
 }
@@ -605,8 +577,6 @@ void sendIgnitionKeyState(KeyStateData state) {
     Joystick.setButton(43, state.keyPos == 4);
     Joystick.setButton(44, state.button == 0);
 }
-
-
 
 void processForces()
 {
