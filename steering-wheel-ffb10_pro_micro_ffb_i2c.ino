@@ -294,11 +294,6 @@ uint16_t readButtonBox()
         buttonBoxPort.digitalWrite(row, HIGH);
     }
 
-    // Инвертируем результат, чтобы активные кнопки были 1
-    // return ~buttonState & 0xFFFF;
-
-    // Serial.print("buttonState: ");
-    // Serial.println(buttonState);
     return buttonState;
 }
 void sendButtonBoxState(uint16_t buttonStates)
@@ -307,7 +302,7 @@ void sendButtonBoxState(uint16_t buttonStates)
 
         Joystick.setButton(
             buttonIterator + 24,
-            buttonStates & bit(buttonIterator)
+            isBitSet(buttonStates, buttonIterator)
         );
     }
 }
