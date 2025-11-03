@@ -67,10 +67,17 @@ EffectParams effectparams[2];
 #define I2C_ADDRESS_STEERING_BLOCK 0x09
 #define I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS1 0x6a
 #define I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS2 0x6b
-#define I2C_ADDRESS_GEARBOX 0x63
+#define I2C_ADDRESS_GEARBOX_CUSTOM 0x10
+#define I2C_ADDRESS_PEDALS_CUSTOM 0X11
+// #define I2C_ADDRESS_GEARBOX 0x63
+//#define I2C_ADDRESS_GEARBOX 0x6C
 #define I2C_ADDRESS_PEDALS ADS1115_ADDRESS_VDD
 #define I2C_ADDRESS_BUTTON_BOX PCF8574_ADDRESS_0
 #define I2C_ADDRESS_IGNITION_PORT PCF8574_ADDRESS_2
+
+#define IGNTION_COMBINED_IGNITION_AND_STARTER_MODE 1
+
+//const byte GEARBOX_INIT_VALUE = 0xC0;
 
 #define IGNITION_PIN_ACC 0
 #define IGNITION_PIN_ST  1
@@ -81,15 +88,15 @@ EffectParams effectparams[2];
 int32_t steeringActualValue = 0;
 int32_t steeringScaledValue = 0;
 int32_t steeringFilteredValue = 0;
-int32_t clutchActualValue = 0;
-int32_t clutchScaledValue = 0;
-int32_t clutchFilteredValue = 0;
-int32_t brakeActualValue = 0;
-int32_t brakeScaledValue = 0;
-int32_t brakeFilteredValue = 0;
-int32_t accelActualValue = 0;
-int32_t accelScaledValue = 0;
-int32_t accelFilteredValue = 0;
+// int32_t clutchActualValue = 0;
+// int32_t clutchScaledValue = 0;
+// int32_t clutchFilteredValue = 0;
+// int32_t brakeActualValue = 0;
+// int32_t brakeScaledValue = 0;
+// int32_t brakeFilteredValue = 0;
+// int32_t accelActualValue = 0;
+// int32_t accelScaledValue = 0;
+// int32_t accelFilteredValue = 0;
 int32_t handbrakeActualValue = 0;
 int32_t handbrakeScaledValue = 0;
 int32_t handbrakeFilteredValue = 0;
@@ -193,7 +200,7 @@ void setup() {
     Wire.begin();
 
     setupJoystick();
-    setupAds1115Pedals();
+    // setupAds1115Pedals();
     setupGearbox();
     setupHandbrake();
     setupButtonBox1();
@@ -223,23 +230,25 @@ void setupJoystick()
     setupTimerInterrupt();
 }
 
-void setupAds1115Pedals()
-{
-    if (adcPedals.init()) {
-        adcPedals.setVoltageRange_mV(ADS1115_RANGE_6144);
-        adcPedals.setCompareChannels(ADS1115_COMP_0_GND);
-        adcPedals.setMeasureMode(ADS1115_CONTINUOUS);
-        adcPedals.setConvRate(ADS1115_250_SPS); // def 128
+// void setupAds1115Pedals()
+// {
+//     if (adcPedals.init()) {
+//         adcPedals.setVoltageRange_mV(ADS1115_RANGE_6144);
+//         adcPedals.setCompareChannels(ADS1115_COMP_0_GND);
+//         adcPedals.setMeasureMode(ADS1115_CONTINUOUS);
+//         adcPedals.setConvRate(ADS1115_250_SPS); // def 128
 
-        Serial.println("adcPedals.init success");
-    } else {
-        Serial.println("adcPedals.init error");
-    }
-}
+//         Serial.println("adcPedals.init success");
+//     } else {
+//         Serial.println("adcPedals.init error");
+//     }
+// }
 
 void setupGearbox()
 {
-
+//    Wire.write(I2C_ADDRESS_GEARBOX);
+//    Wire.write(GEARBOX_INIT_VALUE);
+//    Wire.endTransmission();
 }
 
 void setupHandbrake()
@@ -299,33 +308,33 @@ void loop() {
 
         Serial.println("control\t\taxis\tactual\tscaled\tfiltered");
 
-        Serial.print("steering\tX\t");
-        Serial.print(steeringActualValue);
-        Serial.print("\t");
-        Serial.print(steeringScaledValue);
-        Serial.print("\t");
-        Serial.println(steeringFilteredValue);
+        // Serial.print("steering\tX\t");
+        // Serial.print(steeringActualValue);
+        // Serial.print("\t");
+        // Serial.print(steeringScaledValue);
+        // Serial.print("\t");
+        // Serial.println(steeringFilteredValue);
 
-        Serial.print("clutch\t\tZ\t");
-        Serial.print(clutchActualValue);
-        Serial.print("\t");
-        Serial.print(clutchScaledValue);
-        Serial.print("\t");
-        Serial.println(clutchFilteredValue);
+        // Serial.print("clutch\t\tZ\t");
+        // Serial.print(clutchActualValue);
+        // Serial.print("\t");
+        // Serial.print(clutchScaledValue);
+        // Serial.print("\t");
+        // Serial.println(clutchFilteredValue);
 
-        Serial.print("brake\t\tRz\t");
-        Serial.print(brakeActualValue);
-        Serial.print("\t");
-        Serial.print(brakeScaledValue);
-        Serial.print("\t");
-        Serial.println(brakeFilteredValue);
+        // Serial.print("brake\t\tRz\t");
+        // Serial.print(brakeActualValue);
+        // Serial.print("\t");
+        // Serial.print(brakeScaledValue);
+        // Serial.print("\t");
+        // Serial.println(brakeFilteredValue);
 
-        Serial.print("accel\t\tY\t");
-        Serial.print(accelActualValue);
-        Serial.print("\t");
-        Serial.print(accelScaledValue);
-        Serial.print("\t");
-        Serial.println(accelFilteredValue);
+        // Serial.print("accel\t\tY\t");
+        // Serial.print(accelActualValue);
+        // Serial.print("\t");
+        // Serial.print(accelScaledValue);
+        // Serial.print("\t");
+        // Serial.println(accelFilteredValue);
 
         Serial.print("handbrake\tRx\t");
         Serial.print(handbrakeActualValue);
@@ -355,6 +364,7 @@ void processSteering()
     Joystick.setXAxis(steeringFilteredValue);
 }
 
+/*
 void processPedals()
 {
     int* pedalsValues = readAds1115Channels(adcPedals);
@@ -384,6 +394,43 @@ int16_t* readAds1115Channels(ADS1115_WE adc) {
 
     return values;
 }
+*/
+
+void processPedals()
+{
+    Wire.beginTransmission(I2C_ADDRESS_PEDALS_CUSTOM);
+    Wire.endTransmission();
+    
+    
+    // Wire.requestFrom(I2C_ADDRESS_PEDALS_CUSTOM, 1);
+    // if (Wire.available() == 1) {
+    //     uint8_t r = Wire.read();
+    //     Serial.println(r);
+    // }
+    // return;
+
+
+    Wire.requestFrom(I2C_ADDRESS_PEDALS_CUSTOM, 6);
+    
+    if (Wire.available() == 6) {
+        uint16_t clutchValue = Wire.read() | (Wire.read() << 8);
+        uint16_t brakeValue = Wire.read() | (Wire.read() << 8);
+        uint16_t accelValue = Wire.read() | (Wire.read() << 8);
+
+    // if (setInterval()) {
+    //     Serial.println("clutch\tbrake\taccel");
+    //     Serial.print(clutchValue);
+    //     Serial.print("\t");
+    //     Serial.print(brakeValue);
+    //     Serial.print("\t");
+    //     Serial.println(accelValue);
+    // }
+        
+        Joystick.setZAxis(clutchValue);
+        Joystick.setRzAxis(brakeValue);
+        Joystick.setYAxis(accelValue);
+    }
+}
 
 void processGearbox()
 {
@@ -392,19 +439,36 @@ void processGearbox()
 
 uint16_t readGearbox()
 {
+    Wire.beginTransmission(I2C_ADDRESS_GEARBOX_CUSTOM);
+    Wire.endTransmission();
+    
+    Wire.requestFrom(I2C_ADDRESS_GEARBOX_CUSTOM, 1);
+    
+    if (Wire.available() == 1) {
+        uint8_t gear = Wire.read();
+
+        uint16_t result = 0;
+        if (gear) {
+            result = 1 << (gear - 1);
+        }
+
+        return result;
+    }
+
     return 0;
 }
 
 void sendGearboxButtons(uint16_t states) {
-    Joystick.setButton(15, isBitSet(states, 0));    // btn1
-    Joystick.setButton(16, isBitSet(states, 1));    // 1
-    Joystick.setButton(17, isBitSet(states, 2));    // 2
-    Joystick.setButton(18, isBitSet(states, 3));    // 3
-    Joystick.setButton(19, isBitSet(states, 4));    // 4
-    Joystick.setButton(20, isBitSet(states, 5));    // 5
-    Joystick.setButton(21, isBitSet(states, 6));    // 6
+    Joystick.setButton(16, isBitSet(states, 0));    // 1
+    Joystick.setButton(17, isBitSet(states, 1));    // 2
+    Joystick.setButton(18, isBitSet(states, 2));    // 3
+    Joystick.setButton(19, isBitSet(states, 3));    // 4
+    Joystick.setButton(20, isBitSet(states, 4));    // 5
+    Joystick.setButton(21, isBitSet(states, 5));    // 6
     Joystick.setButton(22, isBitSet(states, 7));    // R
-    Joystick.setButton(23, isBitSet(states, 8));    // btn2
+
+    // Joystick.setButton(15, isBitSet(states, 0));    // btn1
+    // Joystick.setButton(23, isBitSet(states, 8));    // btn2
 }
 
 void processHandbrake()
@@ -436,7 +500,7 @@ uint32_t readSteeringButtons() {
         return result;
     }
 
-    byte1 = Wire.read();
+    byte1 = Wire.read();                                                                                    
     byte2 = Wire.read();
     byte3 = Wire.read();
 
@@ -573,15 +637,18 @@ KeyStateData readIgnitionKeyState() {
 void sendIgnitionKeyState(KeyStateData state) {
     Joystick.setButton(40, state.keyPos == 1);
     Joystick.setButton(41, state.keyPos == 2);
-    Joystick.setButton(42, state.keyPos == 3);
+
+    bool ignitionIsOn = state.keyPos == 3 || (IGNTION_COMBINED_IGNITION_AND_STARTER_MODE && state.keyPos == 4);
+    Joystick.setButton(42, ignitionIsOn);
     Joystick.setButton(43, state.keyPos == 4);
+
     Joystick.setButton(44, state.button == 0);
 }
 
 void processForces()
 {
     effectparams[0].springPosition = steeringFilteredValue - 512;
-    effectparams[1].springPosition = brakeFilteredValue;
+    // effectparams[1].springPosition = brakeFilteredValue;
 
     Joystick.setEffectParams(effectparams);
     Joystick.getForce(forces);
