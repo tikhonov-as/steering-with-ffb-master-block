@@ -1,4 +1,6 @@
-#include "Joystick.h"
+//#include "Joystick.h"
+#include "JoystickS418.h"
+
 #include "PCF8574.h"
 #include "ADS1115_WE.h"
 #include "MovingAverage.h"
@@ -22,6 +24,7 @@ EffectParams effectparams[2];
 #define HANDBRAKE_MAX_VALUE 780
 // а это значения, на которые мапим - которые будут высылаться на ПК
 #define ANALOG_OUT_MIN_VALUE 0
+
 #define ANALOG_OUT_MAX_VALUE 1023
 #define ANALOG_OUT_MAX_VALUE_10bit 1023
 #define ANALOG_OUT_MAX_VALUE_12bit 4095
@@ -82,24 +85,12 @@ EffectParams effectparams[2];
 int32_t steeringActualValue = 0;
 int32_t steeringScaledValue = 0;
 int32_t steeringFilteredValue = 0;
-// int32_t clutchActualValue = 0;
-// int32_t clutchScaledValue = 0;
-// int32_t clutchFilteredValue = 0;
-// int32_t brakeActualValue = 0;
-// int32_t brakeScaledValue = 0;
-// int32_t brakeFilteredValue = 0;
-// int32_t accelActualValue = 0;
-// int32_t accelScaledValue = 0;
-// int32_t accelFilteredValue = 0;
 int32_t handbrakeActualValue = 0;
 int32_t handbrakeScaledValue = 0;
 int32_t handbrakeFilteredValue = 0;
 
 #define MOVING_AVERAGE_SIZE 5
 MovingAverage steeringAverageFilter(MOVING_AVERAGE_SIZE);
-MovingAverage clutchAverageFilter(MOVING_AVERAGE_SIZE);
-MovingAverage brakeAverageFilter(MOVING_AVERAGE_SIZE);
-MovingAverage accelAverageFilter(MOVING_AVERAGE_SIZE);
 MovingAverage handbrakeAverageFilter(MOVING_AVERAGE_SIZE);
 
 ADS1115_WE adcPedals = ADS1115_WE(I2C_ADDRESS_PEDALS);
@@ -109,12 +100,16 @@ ADS1115_WE adcPedals = ADS1115_WE(I2C_ADDRESS_PEDALS);
 // кнопки 25-40 - кнопки ButtonBox1
 // кнопки 41-45 - кнопки Ignition
 
+/*/
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK, // // JOYSTICK_TYPE_MULTI_AXIS
                    45, 1,                 // Button Count, Hat Switch Count
                    true, true, true,      // X Y Z // STEERING CLUTCH BRAKE
                    true, true,  true,     // Rx Ry Rz // ACCEL ? HANDBRAKE
                    false, false,          // rudder throttle
                    false, false, false);  // accelerator brake steering
+/**/
+
+S418::JoystickFfb::Joystick_ Joystick{};
 
 bool ledState = false;
 
@@ -202,11 +197,91 @@ void setup() {
 
 void setupJoystick()
 {
+    Joystick
+            .hidReportId(JOYSTICK_DEFAULT_REPORT_ID)
+            .joystickType(JOYSTICK_TYPE_JOYSTICK)
+            .buttonCount(45)
+            .hatSwitchCount(1)
+// sim controls
+            .includeAccelerator(true)
+            .includeBrake(true)
+            .includeClutch(true)
+            .includeHandbrake(true)
+            .includeSteering(true)
+// axes
+            .includeSlider(true)
+            .includeDial(true)
+//other axes
+            .includeXAxis(false)
+            .includeYAxis(false)
+            .includeZAxis(false)
+            .includeRxAxis(false)
+            .includeRyAxis(false)
+            .includeRzAxis(false)
+            .includeWheel(false)
+            .includeVx(false)
+            .includeVy(false)
+            .includeVz(false)
+            .includeVbrx(false)
+            .includeVbry(false)
+            .includeVbrz(false)
+            .includeAx(false)
+            .includeAy(false)
+            .includeAz(false)
+            .includeAbrrx(false)
+            .includeAbrry(false)
+            .includeAbrrz(false)
+            .includeForcex(false)
+            .includeForcey(false)
+            .includeForcez(false)
+            .includeTorquex(false)
+            .includeTorquey(false)
+            .includeTorquez(false)
+//other sim controls
+            .includeYaw(false)
+            .includePitch(false)
+            .includeRoll(false)
+            .includeRudder(false)
+            .includeThrottle(false)
+            .includeTurretx(false)
+            .includeTurrety(false)
+            .includeTurretz(false)
+
+            .init();
     Joystick.setXAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setZAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setRzAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setYAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setZAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setRxAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setRyAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setRzAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+
+    Joystick.setWheelRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setVxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setVyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setVzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setVbrxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setVbryRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setVbrzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setAxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setAyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setAzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setAbrrxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setAbrryRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setAbrrzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setForcexRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setForceyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setForcezRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setTorquexRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setTorqueyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setTorquezRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setYawRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setPitchRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setRollRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setRudderRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setThrottleRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setTurretxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setTurretyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+    Joystick.setTurretzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
 
     // 0 - 100
     gains[0].totalGain = 100;
@@ -282,40 +357,8 @@ void processSteering()
     steeringActualValue = readSteeringValue();
     steeringScaledValue = steeringActualValue;
     steeringFilteredValue = steeringAverageFilter.update(steeringScaledValue).getAverage();
-    Joystick.setXAxis(steeringFilteredValue);
+    Joystick.setSteering(steeringFilteredValue);
 }
-
-/*
-void processPedals()
-{
-    int* pedalsValues = readAds1115Channels(adcPedals);
-
-    clutchActualValue = pedalsValues[0];
-    clutchScaledValue = constrain(map(clutchActualValue, CLUTCH_MIN_VALUE, CLUTCH_MAX_VALUE, ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE), ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    clutchFilteredValue = clutchAverageFilter.update(clutchScaledValue).getAverage();
-    Joystick.setZAxis(clutchFilteredValue);
-
-    brakeActualValue = pedalsValues[1];
-    brakeScaledValue = constrain(map(brakeActualValue, BRAKE_MIN_VALUE, BRAKE_MAX_VALUE, ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE), ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    brakeFilteredValue = brakeAverageFilter.update(brakeScaledValue).getAverage();
-    Joystick.setRzAxis(brakeFilteredValue);
-
-    accelActualValue = pedalsValues[2];
-    accelScaledValue = constrain(map(accelActualValue, ACCEL_MIN_VALUE, ACCEL_MAX_VALUE, ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE), ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    accelFilteredValue = accelAverageFilter.update(accelScaledValue).getAverage();
-    Joystick.setYAxis(accelFilteredValue);
-}
-
-int16_t* readAds1115Channels(ADS1115_WE adc) {
-    static int16_t values[3];
-
-    values[0] = readAds1115ChannelRaw(adc, ADS1115_COMP_0_GND) >> ADS1115_NONSIGNIFICANT_BITS;
-    values[1] = readAds1115ChannelRaw(adc, ADS1115_COMP_1_GND) >> ADS1115_NONSIGNIFICANT_BITS;
-    values[2] = readAds1115ChannelRaw(adc, ADS1115_COMP_2_GND) >> ADS1115_NONSIGNIFICANT_BITS;
-
-    return values;
-}
-*/
 
 void processPedals()
 {
@@ -329,9 +372,9 @@ void processPedals()
         uint16_t brakeValue = Wire.read() | (Wire.read() << 8);
         uint16_t accelValue = Wire.read() | (Wire.read() << 8);
 
-        Joystick.setZAxis(clutchValue);
-        Joystick.setRzAxis(brakeValue);
-        Joystick.setYAxis(accelValue);
+        Joystick.setClutch(clutchValue);
+        Joystick.setBrake(brakeValue);
+        Joystick.setAccelerator(accelValue);
     }
 }
 
@@ -379,7 +422,7 @@ void processHandbrake()
     handbrakeActualValue = analogRead(ANALOG_INPUT_HANDBRAKE);
     handbrakeScaledValue = constrain(map(handbrakeActualValue, HANDBRAKE_MIN_VALUE, HANDBRAKE_MAX_VALUE, ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE), ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     handbrakeFilteredValue = handbrakeAverageFilter.update(handbrakeScaledValue).getAverage();
-    Joystick.setRxAxis(handbrakeFilteredValue);
+    Joystick.setHandbrake(handbrakeFilteredValue);
 }
 
 void processSteeringButtons() {
@@ -565,7 +608,9 @@ void processStick()
         uint16_t vry = Wire.read() | (Wire.read() << 8);
         uint16_t buttons = Wire.read() | (Wire.read() << 8);
 
-        Joystick.setRyAxis(vrx);
+        //Joystick.setRyAxis(vrx);
+        Joystick.setSlider(vrx);
+        Joystick.setDial(vry);
     }
 }
 
