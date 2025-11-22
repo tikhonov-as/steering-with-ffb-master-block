@@ -1,5 +1,4 @@
 #include "Joystick.h"
-#include "DigitalWriteFast.h"
 #include "PCF8574.h"
 #include "ADS1115_WE.h"
 #include "MovingAverage.h"
@@ -13,8 +12,6 @@ EffectParams effectparams[2];
 #define ANALOG_INPUT_HANDBRAKE A9 // Rx
 
 // это прочитанные значения с ADC
-// #define STEERING_MIN_VALUE  123
-// #define STEERING_MAX_VALUE  914
 #define CLUTCH_MIN_VALUE    840     // 570 // старый блок педалей - 309
 #define CLUTCH_MAX_VALUE    112     // 112 // старый блок педалей - 511
 #define BRAKE_MIN_VALUE     832     // 578 // старый блок педалей - 160
@@ -69,15 +66,12 @@ EffectParams effectparams[2];
 #define I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS2 0x6b
 #define I2C_ADDRESS_GEARBOX_CUSTOM 0x10
 #define I2C_ADDRESS_PEDALS_CUSTOM 0X11
-// #define I2C_ADDRESS_GEARBOX 0x63
-//#define I2C_ADDRESS_GEARBOX 0x6C
 #define I2C_ADDRESS_PEDALS ADS1115_ADDRESS_VDD
 #define I2C_ADDRESS_BUTTON_BOX PCF8574_ADDRESS_0
+#define I2C_ADDRESS_STICK 0X12
 #define I2C_ADDRESS_IGNITION_PORT PCF8574_ADDRESS_2
 
 #define IGNTION_COMBINED_IGNITION_AND_STARTER_MODE 1
-
-//const byte GEARBOX_INIT_VALUE = 0xC0;
 
 #define IGNITION_PIN_ACC 0
 #define IGNITION_PIN_ST  1
@@ -118,7 +112,7 @@ ADS1115_WE adcPedals = ADS1115_WE(I2C_ADDRESS_PEDALS);
 Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK, // // JOYSTICK_TYPE_MULTI_AXIS
                    45, 1,                 // Button Count, Hat Switch Count
                    true, true, true,      // X Y Z // STEERING CLUTCH BRAKE
-                   true, false,  true,     // Rx Ry Rz // ACCEL ? HANDBRAKE
+                   true, true,  true,     // Rx Ry Rz // ACCEL ? HANDBRAKE
                    false, false,          // rudder throttle
                    false, false, false);  // accelerator brake steering
 
@@ -200,7 +194,6 @@ void setup() {
     Wire.begin();
 
     setupJoystick();
-    // setupAds1115Pedals();
     setupGearbox();
     setupHandbrake();
     setupButtonBox1();
@@ -230,25 +223,8 @@ void setupJoystick()
     setupTimerInterrupt();
 }
 
-// void setupAds1115Pedals()
-// {
-//     if (adcPedals.init()) {
-//         adcPedals.setVoltageRange_mV(ADS1115_RANGE_6144);
-//         adcPedals.setCompareChannels(ADS1115_COMP_0_GND);
-//         adcPedals.setMeasureMode(ADS1115_CONTINUOUS);
-//         adcPedals.setConvRate(ADS1115_250_SPS); // def 128
-
-//         Serial.println("adcPedals.init success");
-//     } else {
-//         Serial.println("adcPedals.init error");
-//     }
-// }
-
 void setupGearbox()
 {
-//    Wire.write(I2C_ADDRESS_GEARBOX);
-//    Wire.write(GEARBOX_INIT_VALUE);
-//    Wire.endTransmission();
 }
 
 void setupHandbrake()
@@ -297,63 +273,8 @@ void loop() {
     processSteeringButtons();
     processButtonBox();
     processIgnitionKeyState();
+    processStick();
     processForces();
-
-    // debug
-    if (0 && debug && setInterval(250)) {
-        Serial.println("-------------------");
-
-        Serial.print("adcPedals.isDisconnected: ");
-        Serial.println(adcPedals.isDisconnected());
-
-        Serial.println("control\t\taxis\tactual\tscaled\tfiltered");
-
-        // Serial.print("steering\tX\t");
-        // Serial.print(steeringActualValue);
-        // Serial.print("\t");
-        // Serial.print(steeringScaledValue);
-        // Serial.print("\t");
-        // Serial.println(steeringFilteredValue);
-
-        // Serial.print("clutch\t\tZ\t");
-        // Serial.print(clutchActualValue);
-        // Serial.print("\t");
-        // Serial.print(clutchScaledValue);
-        // Serial.print("\t");
-        // Serial.println(clutchFilteredValue);
-
-        // Serial.print("brake\t\tRz\t");
-        // Serial.print(brakeActualValue);
-        // Serial.print("\t");
-        // Serial.print(brakeScaledValue);
-        // Serial.print("\t");
-        // Serial.println(brakeFilteredValue);
-
-        // Serial.print("accel\t\tY\t");
-        // Serial.print(accelActualValue);
-        // Serial.print("\t");
-        // Serial.print(accelScaledValue);
-        // Serial.print("\t");
-        // Serial.println(accelFilteredValue);
-
-        Serial.print("handbrake\tRx\t");
-        Serial.print(handbrakeActualValue);
-        Serial.print("\t");
-        Serial.print(handbrakeScaledValue);
-        Serial.print("\t");
-        Serial.println(handbrakeFilteredValue);
-
-        Serial.println("-------------------");
-        Serial.print("steeringFilteredValue: ");
-        Serial.println(steeringFilteredValue);
-        Serial.print("effectparams[0].springPosition: ");
-        Serial.println(effectparams[0].springPosition);
-        Serial.print("force: ");
-        Serial.print(forces[0]);
-        Serial.print("; ");
-        Serial.print(forces[1]);
-
-    }    
 }
 
 void processSteering()
@@ -401,15 +322,6 @@ void processPedals()
     Wire.beginTransmission(I2C_ADDRESS_PEDALS_CUSTOM);
     Wire.endTransmission();
     
-    
-    // Wire.requestFrom(I2C_ADDRESS_PEDALS_CUSTOM, 1);
-    // if (Wire.available() == 1) {
-    //     uint8_t r = Wire.read();
-    //     Serial.println(r);
-    // }
-    // return;
-
-
     Wire.requestFrom(I2C_ADDRESS_PEDALS_CUSTOM, 6);
     
     if (Wire.available() == 6) {
@@ -417,15 +329,6 @@ void processPedals()
         uint16_t brakeValue = Wire.read() | (Wire.read() << 8);
         uint16_t accelValue = Wire.read() | (Wire.read() << 8);
 
-    // if (setInterval()) {
-    //     Serial.println("clutch\tbrake\taccel");
-    //     Serial.print(clutchValue);
-    //     Serial.print("\t");
-    //     Serial.print(brakeValue);
-    //     Serial.print("\t");
-    //     Serial.println(accelValue);
-    // }
-        
         Joystick.setZAxis(clutchValue);
         Joystick.setRzAxis(brakeValue);
         Joystick.setYAxis(accelValue);
@@ -520,10 +423,10 @@ uint32_t readSteeringButtons() {
 void sendSteeringButtons(uint32_t states) {
     byte hatSwitch = 0;
 
-    bool dpadUp = isBitSet(states, 13);     // (states & (1 << 13)) != 0;
-    bool dpadRight = isBitSet(states, 14);  // (states & (1 << 14)) != 0;
-    bool dpadDown = isBitSet(states, 15);   // (states & (1 << 15)) != 0;
-    bool dpadLeft = isBitSet(states, 16);   // (states & (1 << 16)) != 0;
+    bool dpadUp = isBitSet(states, 13);
+    bool dpadRight = isBitSet(states, 14);
+    bool dpadDown = isBitSet(states, 15);
+    bool dpadLeft = isBitSet(states, 16);
 
     if (!(dpadUp || dpadRight || dpadDown || dpadLeft)) {
         Joystick.setHatSwitch(hatSwitch, JOYSTICK_HATSWITCH_RELEASE);
@@ -568,6 +471,12 @@ uint16_t processButtonBox() {
 uint16_t readButtonBox()
 {
     uint16_t buttonState = 0xFFFF;  // Инициализируем все биты в 1
+
+
+    Wire.beginTransmission(I2C_ADDRESS_BUTTON_BOX);
+    if (Wire.endTransmission() != 0) {
+        return 0x0000;
+    }
 
     byte readData;
 
@@ -643,6 +552,21 @@ void sendIgnitionKeyState(KeyStateData state) {
     Joystick.setButton(43, state.keyPos == 4);
 
     Joystick.setButton(44, state.button == 0);
+}
+
+void processStick()
+{
+    Wire.requestFrom(I2C_ADDRESS_STICK, 6);
+    
+    //Serial.println(Wire.available());
+
+    if (Wire.available() == 6) {
+        uint16_t vrx = Wire.read() | (Wire.read() << 8);
+        uint16_t vry = Wire.read() | (Wire.read() << 8);
+        uint16_t buttons = Wire.read() | (Wire.read() << 8);
+
+        Joystick.setRyAxis(vrx);
+    }
 }
 
 void processForces()
