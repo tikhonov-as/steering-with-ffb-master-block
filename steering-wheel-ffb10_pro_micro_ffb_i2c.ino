@@ -11,60 +11,19 @@ int32_t forces[2] = {0};
 Gains gains[2];
 EffectParams effectparams[2];
 
-//#define ANALOG_INPUT_HANDBRAKE A9 // Rx
-
-// это прочитанные значения с ADC
-//#define HANDBRAKE_MIN_VALUE 492
-//#define HANDBRAKE_MAX_VALUE 780
-// а это значения, на которые мапим - которые будут высылаться на ПК
 #define ANALOG_OUT_MIN_VALUE 0
 #define ANALOG_OUT_MAX_VALUE 1023
 
-#define PCF8574_ADDRESS_0 0x20
-#define PCF8574_ADDRESS_1 0x21
-#define PCF8574_ADDRESS_2 0x22
-#define PCF8574_ADDRESS_3 0x23
-#define PCF8574_ADDRESS_4 0x24
-#define PCF8574_ADDRESS_5 0x25
-#define PCF8574_ADDRESS_6 0x26
-#define PCF8574_ADDRESS_7 0x27
+#define I2C_ADDRESS_STEERING_BLOCK  0x09
+#define I2C_ADDRESS_GEARBOX_CUSTOM  0x10
+#define I2C_ADDRESS_PEDALS_CUSTOM   0X11
+#define I2C_ADDRESS_STICK           0X12
+#define I2C_ADDRESS_HANDBRAKE       0X13
 
-// #define PCA9685_ADDRESS_0  0x40
-// #define PCA9685_ADDRESS_1  0x41
-// #define PCA9685_ADDRESS_2  0x42
-// #define PCA9685_ADDRESS_3  0x43
-// #define PCA9685_ADDRESS_4  0x44
-// #define PCA9685_ADDRESS_5  0x45
-// #define PCA9685_ADDRESS_6  0x46
-// #define PCA9685_ADDRESS_7  0x47
-// #define PCA9685_ADDRESS_8  0x48
-// #define PCA9685_ADDRESS_9  0x49
-// #define PCA9685_ADDRESS_10 0x4A
-// #define PCA9685_ADDRESS_11 0x4B
-// #define PCA9685_ADDRESS_12 0x4C
-// #define PCA9685_ADDRESS_13 0x4D
-// #define PCA9685_ADDRESS_14 0x4E
-// #define PCA9685_ADDRESS_15 0x4F
-// #define PCA9685_ADDRESS_ALL_CALL 0x70
-
-#define ADS1115_ADDRESS_GND 0x48
-#define ADS1115_ADDRESS_VDD 0x49
-#define ADS1115_ADDRESS_SDA 0x4a
-#define ADS1115_ADDRESS_SCL 0x4b // при соединении напрямую - подсаживает линию SCL. работает только с короткким проводом, длиннее - виснет
-#define ADS1115_NONSIGNIFICANT_BITS 4
-
-#define I2C_ADDRESS_STEERING_BLOCK 0x09
+#define I2C_ADDRESS_BUTTON_BOX      0x20
+#define I2C_ADDRESS_IGNITION_PORT   0x22
 #define I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS1 0x6a
 #define I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS2 0x6b
-#define I2C_ADDRESS_GEARBOX_CUSTOM 0x10
-#define I2C_ADDRESS_PEDALS_CUSTOM 0X11
-#define I2C_ADDRESS_PEDALS ADS1115_ADDRESS_VDD
-#define I2C_ADDRESS_BUTTON_BOX PCF8574_ADDRESS_0
-#define I2C_ADDRESS_STICK 0X12
-#define I2C_ADDRESS_HANDBRAKE 0X13
-#define I2C_ADDRESS_IGNITION_PORT PCF8574_ADDRESS_2
-
-#define IGNTION_COMBINED_IGNITION_AND_STARTER_MODE 1
 
 #define IGNITION_PIN_ACC    0
 #define IGNITION_PIN_ST     1
@@ -76,15 +35,9 @@ EffectParams effectparams[2];
 int32_t steeringActualValue = 0;
 int32_t steeringScaledValue = 0;
 int32_t steeringFilteredValue = 0;
-int32_t handbrakeActualValue = 0;
-int32_t handbrakeScaledValue = 0;
-int32_t handbrakeFilteredValue = 0;
 
 #define MOVING_AVERAGE_SIZE 5
 MovingAverage steeringAverageFilter(MOVING_AVERAGE_SIZE);
-MovingAverage handbrakeAverageFilter(MOVING_AVERAGE_SIZE);
-
-ADS1115_WE adcPedals = ADS1115_WE(I2C_ADDRESS_PEDALS);
 
 // кнопки 1-15 - стоковые на руле. DPad (Hat) - отдельно. Кнопка Prog не считается номерной кнопкой контроллера (т.е. служебная)
 // кнопки 16-24 - кнопки КПП
@@ -123,11 +76,6 @@ inline bool isBitSet(uint32_t state, uint8_t bit) {
  return (state & (static_cast<uint32_t>(1) << bit)) != 0;
 }
 
-int16_t readAds1115ChannelRaw(ADS1115_WE adc, ADS1115_MUX channel) {
-    adc.setCompareChannels(channel);
-    return adc.getRawResult();
-}
-
 void setupTimerInterrupt() {
     cli();
     TCCR3A = 0; //set TCCR1A 0
@@ -160,17 +108,10 @@ bool setInterval(unsigned int step = 1000) {
 }
 
 int16_t readSteeringValue() {
-    Wire.beginTransmission(I2C_ADDRESS_STEERING_BLOCK);
-    Wire.endTransmission();
-    
-    Wire.requestFrom(I2C_ADDRESS_STEERING_BLOCK, 2);  // Запрашиваем 2 байта (uint16_t)
+    Wire.requestFrom(I2C_ADDRESS_STEERING_BLOCK, 2);
     
     if (Wire.available() == 2) {
         uint16_t angle = Wire.read() | (Wire.read() << 8);
-        if (debug && setInterval(1000)) {
-            Serial.print("Получен угол: ");
-            Serial.println(angle);
-        }
 
         return angle;
     }
@@ -182,8 +123,6 @@ void setup() {
     Wire.begin();
 
     setupJoystick();
-    setupGearbox();
-    setupHandbrake();
     setupButtonBox1();
     setupIgnitionKey();
 }
@@ -201,7 +140,6 @@ void setupJoystick()
             .includeZAxis(true)         // clutch
             .includeBrake(true)         // Так же определяется как Rz
             .includeRxAxis(true)        // handbrake
-            
 
 // axes
             .includeVx(false)           // не распознается
@@ -209,7 +147,6 @@ void setupJoystick()
 
             .includeSlider(true)
             .includeDial(true)
-
 
 //other axes
             .includeXAxis(false)        // занято как Steering 
@@ -230,7 +167,6 @@ void setupJoystick()
             .includeAx(false)            // вешает USB
             .includeAy(false)            // вешает USB
             .includeAz(false)
-
 
             .includeAbrrx(false)
             .includeAbrry(false)
@@ -306,14 +242,6 @@ void setupJoystick()
     setupTimerInterrupt();
 }
 
-void setupGearbox()
-{
-}
-
-void setupHandbrake()
-{
-}
-
 void setupButtonBox1() {
     buttonBoxPort.pinMode(0, OUTPUT);
     buttonBoxPort.pinMode(1, OUTPUT);
@@ -370,9 +298,6 @@ void processSteering()
 
 void processPedals()
 {
-    Wire.beginTransmission(I2C_ADDRESS_PEDALS_CUSTOM);
-    Wire.endTransmission();
-    
     Wire.requestFrom(I2C_ADDRESS_PEDALS_CUSTOM, 6);
     
     if (Wire.available() == 6) {
@@ -393,9 +318,6 @@ void processGearbox()
 
 uint16_t readGearbox()
 {
-    Wire.beginTransmission(I2C_ADDRESS_GEARBOX_CUSTOM);
-    Wire.endTransmission();
-    
     Wire.requestFrom(I2C_ADDRESS_GEARBOX_CUSTOM, 1);
     
     if (Wire.available() == 1) {
@@ -529,7 +451,6 @@ uint16_t readButtonBox()
 {
     uint16_t buttonState = 0xFFFF;  // Инициализируем все биты в 1
 
-
     Wire.beginTransmission(I2C_ADDRESS_BUTTON_BOX);
     if (Wire.endTransmission() != 0) {
         return 0x0000;
@@ -614,8 +535,6 @@ void sendIgnitionKeyState(KeyStateData state) {
 void processStick()
 {
     Wire.requestFrom(I2C_ADDRESS_STICK, 6);
-    
-    //Serial.println(Wire.available());
 
     if (Wire.available() == 6) {
         uint16_t vrx = Wire.read() | (Wire.read() << 8);
@@ -645,7 +564,7 @@ void sendForce(int32_t ffbValue) {
         Serial.print("sending ffb value: ");
         Serial.println(ffbValue);
     }
-    Wire.write(ffbValue & 0xFF);     // младший байт
+    Wire.write(ffbValue & 0xFF);        // младший байт
     Wire.write((ffbValue >> 8) & 0xFF); // старший байт
     Wire.endTransmission();
 }
