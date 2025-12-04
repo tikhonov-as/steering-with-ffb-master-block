@@ -11,25 +11,14 @@ int32_t forces[2] = {0};
 Gains gains[2];
 EffectParams effectparams[2];
 
-#define ANALOG_INPUT_HANDBRAKE A9 // Rx
+//#define ANALOG_INPUT_HANDBRAKE A9 // Rx
 
 // это прочитанные значения с ADC
-#define CLUTCH_MIN_VALUE    840     // 570 // старый блок педалей - 309
-#define CLUTCH_MAX_VALUE    112     // 112 // старый блок педалей - 511
-#define BRAKE_MIN_VALUE     832     // 578 // старый блок педалей - 160
-#define BRAKE_MAX_VALUE     40      // 25  // старый блок педалей - 395
-#define ACCEL_MIN_VALUE     981     // 680 // старый блок педалей - 207
-#define ACCEL_MAX_VALUE     560     // 339 // старый блок педалей - 511
-#define HANDBRAKE_MIN_VALUE 492
-#define HANDBRAKE_MAX_VALUE 780
+//#define HANDBRAKE_MIN_VALUE 492
+//#define HANDBRAKE_MAX_VALUE 780
 // а это значения, на которые мапим - которые будут высылаться на ПК
 #define ANALOG_OUT_MIN_VALUE 0
-
 #define ANALOG_OUT_MAX_VALUE 1023
-#define ANALOG_OUT_MAX_VALUE_10bit 1023
-#define ANALOG_OUT_MAX_VALUE_12bit 4095
-#define ANALOG_OUT_MAX_VALUE_14bit 16383
-#define ANALOG_OUT_MAX_VALUE_16bit 65535
 
 #define PCF8574_ADDRESS_0 0x20
 #define PCF8574_ADDRESS_1 0x21
@@ -72,15 +61,17 @@ EffectParams effectparams[2];
 #define I2C_ADDRESS_PEDALS ADS1115_ADDRESS_VDD
 #define I2C_ADDRESS_BUTTON_BOX PCF8574_ADDRESS_0
 #define I2C_ADDRESS_STICK 0X12
+#define I2C_ADDRESS_HANDBRAKE 0X13
 #define I2C_ADDRESS_IGNITION_PORT PCF8574_ADDRESS_2
 
 #define IGNTION_COMBINED_IGNITION_AND_STARTER_MODE 1
 
-#define IGNITION_PIN_ACC 0
-#define IGNITION_PIN_ST  1
-#define IGNITION_PIN_BAT 2
-#define IGNITION_PIN_IG  3
-#define IGNITION_PIN_BTN 4
+#define IGNITION_PIN_ACC    0
+#define IGNITION_PIN_ST     1
+#define IGNITION_PIN_BAT    2
+#define IGNITION_PIN_IG     3
+#define IGNITION_PIN_BTN    4
+#define IGNITION_PIN_MODE   5
 
 int32_t steeringActualValue = 0;
 int32_t steeringScaledValue = 0;
@@ -123,6 +114,8 @@ typedef struct {
     bool st_ig;
     bool button;
     uint8_t keyPos;
+    
+    bool igModeBoth;
 } KeyStateData;
 
 inline bool isBitSet(uint32_t state, uint8_t bit) {
@@ -203,31 +196,42 @@ void setupJoystick()
             .buttonCount(45)
             .hatSwitchCount(1)
 // sim controls
-            .includeAccelerator(true)
-            .includeBrake(true)
-            .includeClutch(true)
-            .includeHandbrake(true)
-            .includeSteering(true)
+            .includeSteering(true)      // Так же определяется как X
+            .includeAccelerator(true)   // Так же определяется как Y
+            .includeZAxis(true)         // clutch
+            .includeBrake(true)         // Так же определяется как Rz
+            .includeRxAxis(true)        // handbrake
+            
+
 // axes
+            .includeVx(false)           // не распознается
+            .includeVy(false)           // не распознается
+
             .includeSlider(true)
             .includeDial(true)
+
+
 //other axes
-            .includeXAxis(false)
-            .includeYAxis(false)
-            .includeZAxis(false)
-            .includeRxAxis(false)
+            .includeXAxis(false)        // занято как Steering 
+            .includeYAxis(false)        // занято как Accelerator
+            .includeRzAxis(false)       // занято как Brake
+
             .includeRyAxis(false)
-            .includeRzAxis(false)
+
+            .includeClutch(false)       // не распознается
+            .includeHandbrake(false)    // не распознается
+
             .includeWheel(false)
-            .includeVx(false)
-            .includeVy(false)
-            .includeVz(false)
+            .includeVz(false)           // не распознается - судя по vx vy
             .includeVbrx(false)
             .includeVbry(false)
             .includeVbrz(false)
-            .includeAx(false)
-            .includeAy(false)
+
+            .includeAx(false)            // вешает USB
+            .includeAy(false)            // вешает USB
             .includeAz(false)
+
+
             .includeAbrrx(false)
             .includeAbrry(false)
             .includeAbrrz(false)
@@ -238,16 +242,19 @@ void setupJoystick()
             .includeTorquey(false)
             .includeTorquez(false)
 //other sim controls
-            .includeYaw(false)
-            .includePitch(false)
-            .includeRoll(false)
-            .includeRudder(false)
-            .includeThrottle(false)
+            .includeYaw(false)          // не распознается
+            .includePitch(false)        // не распознается
+            
+            .includeRoll(false)          // один не определяется
+            .includeRudder(false)        // второй как Rz
+
+            .includeThrottle(true)
             .includeTurretx(false)
             .includeTurrety(false)
             .includeTurretz(false)
 
             .init();
+
     Joystick.setXAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setYAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setZAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
@@ -274,6 +281,7 @@ void setupJoystick()
     Joystick.setTorquexRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setTorqueyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setTorquezRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
+
     Joystick.setYawRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setPitchRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
     Joystick.setRollRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
@@ -304,7 +312,6 @@ void setupGearbox()
 
 void setupHandbrake()
 {
-    pinMode(ANALOG_INPUT_HANDBRAKE, INPUT);
 }
 
 void setupButtonBox1() {
@@ -333,6 +340,7 @@ void setupIgnitionKey() {
     ignitionKeyPort.pinMode(IGNITION_PIN_IG, INPUT_PULLUP);
 
     ignitionKeyPort.pinMode(IGNITION_PIN_BTN, INPUT_PULLUP);
+    ignitionKeyPort.pinMode(IGNITION_PIN_MODE, INPUT_PULLUP);
 
     ignitionKeyPort.begin();
 
@@ -372,7 +380,7 @@ void processPedals()
         uint16_t brakeValue = Wire.read() | (Wire.read() << 8);
         uint16_t accelValue = Wire.read() | (Wire.read() << 8);
 
-        Joystick.setClutch(clutchValue);
+        Joystick.setZAxis(clutchValue);
         Joystick.setBrake(brakeValue);
         Joystick.setAccelerator(accelValue);
     }
@@ -419,10 +427,16 @@ void sendGearboxButtons(uint16_t states) {
 
 void processHandbrake()
 {
-    handbrakeActualValue = analogRead(ANALOG_INPUT_HANDBRAKE);
-    handbrakeScaledValue = constrain(map(handbrakeActualValue, HANDBRAKE_MIN_VALUE, HANDBRAKE_MAX_VALUE, ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE), ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    handbrakeFilteredValue = handbrakeAverageFilter.update(handbrakeScaledValue).getAverage();
-    Joystick.setHandbrake(handbrakeFilteredValue);
+    Wire.requestFrom(I2C_ADDRESS_HANDBRAKE, 4);
+
+    if (Wire.available() == 4) {
+        uint16_t handbrake = Wire.read() | (Wire.read() << 8);
+        uint16_t buttons = Wire.read() | (Wire.read() << 8);
+        
+        Joystick.setRxAxis(handbrake);
+
+        Joystick.setButton(23, isBitSet(buttons, 0)); 
+    }
 }
 
 void processSteeringButtons() {
@@ -541,6 +555,7 @@ uint16_t readButtonBox()
 }
 void sendButtonBoxState(uint16_t buttonStates)
 {
+    /*/
     for (byte buttonIterator = 0; buttonIterator < 16; buttonIterator++) {
 
         Joystick.setButton(
@@ -548,6 +563,7 @@ void sendButtonBoxState(uint16_t buttonStates)
                 isBitSet(buttonStates, buttonIterator)
         );
     }
+    /**/
 }
 
 void processIgnitionKeyState() {
@@ -582,19 +598,17 @@ KeyStateData readIgnitionKeyState() {
     }
 
     data.button = ignitionKeyPort.digitalRead(IGNITION_PIN_BTN, true);
+    data.igModeBoth = ignitionKeyPort.digitalRead(IGNITION_PIN_MODE, true);
 
     return data;
 }
 
 void sendIgnitionKeyState(KeyStateData state) {
-    Joystick.setButton(40, state.keyPos == 1);
-    Joystick.setButton(41, state.keyPos == 2);
-
-    bool ignitionIsOn = state.keyPos == 3 || (IGNTION_COMBINED_IGNITION_AND_STARTER_MODE && state.keyPos == 4);
-    Joystick.setButton(42, ignitionIsOn);
-    Joystick.setButton(43, state.keyPos == 4);
-
-    Joystick.setButton(44, state.button == 0);
+    Joystick.setButton(24, state.keyPos == 1);
+    Joystick.setButton(25, state.keyPos == 2);
+    Joystick.setButton(26, state.igModeBoth ? (state.keyPos >= 3) : (state.keyPos == 3));
+    Joystick.setButton(27, state.keyPos == 4);
+    Joystick.setButton(28, state.button == 0);
 }
 
 void processStick()
@@ -608,7 +622,6 @@ void processStick()
         uint16_t vry = Wire.read() | (Wire.read() << 8);
         uint16_t buttons = Wire.read() | (Wire.read() << 8);
 
-        //Joystick.setRyAxis(vrx);
         Joystick.setSlider(vrx);
         Joystick.setDial(vry);
     }
