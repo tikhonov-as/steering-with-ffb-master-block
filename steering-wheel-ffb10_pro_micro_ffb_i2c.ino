@@ -32,6 +32,14 @@ EffectParams effectparams[2];
 #define IGNITION_PIN_BTN    4
 #define IGNITION_PIN_MODE   5
 
+#define AXIS_STEERING       Axis::S_STEERING
+#define AXIS_CLUTCH         Axis::A_Z
+#define AXIS_BRAKE          Axis::S_BRAKE
+#define AXIS_ACCELERATOR    Axis::S_ACCELERATOR
+#define AXIS_HANDBRAKE      Axis::A_RX
+#define AXIS_STICK1_X       Axis::A_DIAL
+#define AXIS_STICK1_Y       Axis::A_SLIDER
+
 int32_t steeringActualValue = 0;
 int32_t steeringScaledValue = 0;
 int32_t steeringFilteredValue = 0;
@@ -41,17 +49,6 @@ MovingAverage steeringAverageFilter(MOVING_AVERAGE_SIZE);
 
 // кнопки 1-15 - стоковые на руле. DPad (Hat) - отдельно. Кнопка Prog не считается номерной кнопкой контроллера (т.е. служебная)
 // кнопки 16-24 - кнопки КПП
-// кнопки 25-40 - кнопки ButtonBox1
-// кнопки 41-45 - кнопки Ignition
-
-/*/
-Joystick_ Joystick(JOYSTICK_DEFAULT_REPORT_ID, JOYSTICK_TYPE_JOYSTICK, // // JOYSTICK_TYPE_MULTI_AXIS
-                   45, 1,                 // Button Count, Hat Switch Count
-                   true, true, true,      // X Y Z // STEERING CLUTCH BRAKE
-                   true, true,  true,     // Rx Ry Rz // ACCEL ? HANDBRAKE
-                   false, false,          // rudder throttle
-                   false, false, false);  // accelerator brake steering
-/**/
 
 S418::JoystickFfb::Joystick_ Joystick{};
 
@@ -107,17 +104,6 @@ bool setInterval(unsigned int step = 1000) {
     return become;
 }
 
-int16_t readSteeringValue() {
-    Wire.requestFrom(I2C_ADDRESS_STEERING_BLOCK, 2);
-    
-    if (Wire.available() == 2) {
-        uint16_t angle = Wire.read() | (Wire.read() << 8);
-
-        return angle;
-    }
-    return -1;
-}
-
 void setup() {
     Serial.begin(115200);
     Wire.begin();
@@ -134,98 +120,23 @@ void setupJoystick()
             .joystickType(JOYSTICK_TYPE_JOYSTICK)
             .buttonCount(45)
             .hatSwitchCount(1)
-// sim controls
-            .includeSteering(true)      // Так же определяется как X
-            .includeAccelerator(true)   // Так же определяется как Y
-            .includeZAxis(true)         // clutch
-            .includeBrake(true)         // Так же определяется как Rz
-            .includeRxAxis(true)        // handbrake
+            // .includeSteering()      
+            // .includeZAxis()   
+            // .includeBrake()
+            // .includeAccelerator()
+            // .includeRxAxis()
+            // .includeDial()
+            // .includeSlider()
 
-// axes
-            .includeVx(false)           // не распознается
-            .includeVy(false)           // не распознается
-
-            .includeSlider(true)
-            .includeDial(true)
-
-//other axes
-            .includeXAxis(false)        // занято как Steering 
-            .includeYAxis(false)        // занято как Accelerator
-            .includeRzAxis(false)       // занято как Brake
-
-            .includeRyAxis(false)
-
-            .includeClutch(false)       // не распознается
-            .includeHandbrake(false)    // не распознается
-
-            .includeWheel(false)
-            .includeVz(false)           // не распознается - судя по vx vy
-            .includeVbrx(false)
-            .includeVbry(false)
-            .includeVbrz(false)
-
-            .includeAx(false)            // вешает USB
-            .includeAy(false)            // вешает USB
-            .includeAz(false)
-
-            .includeAbrrx(false)
-            .includeAbrry(false)
-            .includeAbrrz(false)
-            .includeForcex(false)
-            .includeForcey(false)
-            .includeForcez(false)
-            .includeTorquex(false)
-            .includeTorquey(false)
-            .includeTorquez(false)
-//other sim controls
-            .includeYaw(false)          // не распознается
-            .includePitch(false)        // не распознается
-            
-            .includeRoll(false)          // один не определяется
-            .includeRudder(false)        // второй как Rz
-
-            .includeThrottle(true)
-            .includeTurretx(false)
-            .includeTurrety(false)
-            .includeTurretz(false)
+            .includeAxis(AXIS_STEERING)      
+            .includeAxis(AXIS_CLUTCH)   
+            .includeAxis(Axis::S_BRAKE)     
+            .includeAxis(Axis::S_ACCELERATOR)
+            .includeAxis(AXIS_HANDBRAKE)
+            .includeAxis(AXIS_STICK1_X)
+            .includeAxis(AXIS_STICK1_Y)
 
             .init();
-
-    Joystick.setXAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setYAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setZAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setRxAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setRyAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setRzAxisRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-
-    Joystick.setWheelRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setVxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setVyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setVzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setVbrxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setVbryRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setVbrzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setAxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setAyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setAzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setAbrrxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setAbrryRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setAbrrzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setForcexRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setForceyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setForcezRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setTorquexRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setTorqueyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setTorquezRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-
-    Joystick.setYawRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setPitchRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setRollRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setRudderRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setThrottleRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setTurretxRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setTurretyRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
-    Joystick.setTurretzRange(ANALOG_OUT_MIN_VALUE, ANALOG_OUT_MAX_VALUE);
 
     // 0 - 100
     gains[0].totalGain = 100;
@@ -293,7 +204,19 @@ void processSteering()
     steeringActualValue = readSteeringValue();
     steeringScaledValue = steeringActualValue;
     steeringFilteredValue = steeringAverageFilter.update(steeringScaledValue).getAverage();
-    Joystick.setSteering(steeringFilteredValue);
+    // Joystick.setSteering(steeringFilteredValue);
+    Joystick.setAxisValue(AXIS_STEERING, steeringFilteredValue);
+}
+
+int16_t readSteeringValue() {       
+    Wire.requestFrom(I2C_ADDRESS_STEERING_BLOCK, 2);
+    
+    if (Wire.available() == 2) {
+        uint16_t angle = Wire.read() | (Wire.read() << 8);
+
+        return angle;
+    }
+    return -1;
 }
 
 void processPedals()
@@ -305,9 +228,13 @@ void processPedals()
         uint16_t brakeValue = Wire.read() | (Wire.read() << 8);
         uint16_t accelValue = Wire.read() | (Wire.read() << 8);
 
-        Joystick.setZAxis(clutchValue);
-        Joystick.setBrake(brakeValue);
-        Joystick.setAccelerator(accelValue);
+        Joystick.setAxisValue(AXIS_CLUTCH, clutchValue);
+        Joystick.setAxisValue(AXIS_BRAKE, brakeValue);
+        Joystick.setAxisValue(AXIS_ACCELERATOR, accelValue);
+
+        // Joystick.setClutch(clutchValue);
+        // Joystick.setBrake(brakeValue);
+        // Joystick.setAccelerator(accelValue);
     }
 }
 
@@ -355,7 +282,8 @@ void processHandbrake()
         uint16_t handbrake = Wire.read() | (Wire.read() << 8);
         uint16_t buttons = Wire.read() | (Wire.read() << 8);
         
-        Joystick.setRxAxis(handbrake);
+       Joystick.setAxisValue(AXIS_HANDBRAKE, handbrake);
+    //    Joystick.setRxAxis(handbrake);
 
         Joystick.setButton(23, isBitSet(buttons, 0)); 
     }
@@ -541,8 +469,10 @@ void processStick()
         uint16_t vry = Wire.read() | (Wire.read() << 8);
         uint16_t buttons = Wire.read() | (Wire.read() << 8);
 
-        Joystick.setSlider(vrx);
-        Joystick.setDial(vry);
+        Joystick.setAxisValue(AXIS_STICK1_X, vrx);
+        Joystick.setAxisValue(AXIS_STICK1_Y, vry);
+        // Joystick.setSlider(vrx);
+        // Joystick.setDial(vry);
     }
 }
 
