@@ -1,9 +1,6 @@
 //#include "Joystick.h"
 #include "JoystickS418.h"
-
 #include "PCF8574.h"
-#include "ADS1115_WE.h"
-#include "MovingAverage.h"
 
 bool debug = false;
 
@@ -32,20 +29,16 @@ EffectParams effectparams[2];
 #define IGNITION_PIN_BTN    4
 #define IGNITION_PIN_MODE   5
 
-#define AXIS_STEERING       Axis::S_STEERING
+#define AXIS_STEERING       Axis::A_X
+// #define AXIS_STEERING       Axis::S_STEERING // не работает FFb
 #define AXIS_CLUTCH         Axis::A_Z
-#define AXIS_BRAKE          Axis::S_BRAKE
-#define AXIS_ACCELERATOR    Axis::S_ACCELERATOR
+#define AXIS_BRAKE          Axis::A_RZ  //Axis::S_BRAKE
+#define AXIS_ACCELERATOR    Axis::A_Y   //Axis::S_ACCELERATOR
 #define AXIS_HANDBRAKE      Axis::A_RX
 #define AXIS_STICK1_X       Axis::A_DIAL
 #define AXIS_STICK1_Y       Axis::A_SLIDER
 
-int32_t steeringActualValue = 0;
-int32_t steeringScaledValue = 0;
-int32_t steeringFilteredValue = 0;
-
-#define MOVING_AVERAGE_SIZE 5
-MovingAverage steeringAverageFilter(MOVING_AVERAGE_SIZE);
+int32_t steeringValue = 0;
 
 // кнопки 1-15 - стоковые на руле. DPad (Hat) - отдельно. Кнопка Prog не считается номерной кнопкой контроллера (т.е. служебная)
 // кнопки 16-24 - кнопки КПП
@@ -120,14 +113,6 @@ void setupJoystick()
             .joystickType(JOYSTICK_TYPE_JOYSTICK)
             .buttonCount(45)
             .hatSwitchCount(1)
-            // .includeSteering()      
-            // .includeZAxis()   
-            // .includeBrake()
-            // .includeAccelerator()
-            // .includeRxAxis()
-            // .includeDial()
-            // .includeSlider()
-
             .includeAxis(AXIS_STEERING)      
             .includeAxis(AXIS_CLUTCH)   
             .includeAxis(Axis::S_BRAKE)     
@@ -135,7 +120,6 @@ void setupJoystick()
             .includeAxis(AXIS_HANDBRAKE)
             .includeAxis(AXIS_STICK1_X)
             .includeAxis(AXIS_STICK1_Y)
-
             .init();
 
     // 0 - 100
@@ -201,11 +185,8 @@ void loop() {
 
 void processSteering()
 {
-    steeringActualValue = readSteeringValue();
-    steeringScaledValue = steeringActualValue;
-    steeringFilteredValue = steeringAverageFilter.update(steeringScaledValue).getAverage();
-    // Joystick.setSteering(steeringFilteredValue);
-    Joystick.setAxisValue(AXIS_STEERING, steeringFilteredValue);
+    steeringValue = readSteeringValue();
+    Joystick.setAxisValue(AXIS_STEERING, steeringValue);
 }
 
 int16_t readSteeringValue() {       
@@ -224,17 +205,9 @@ void processPedals()
     Wire.requestFrom(I2C_ADDRESS_PEDALS_CUSTOM, 6);
     
     if (Wire.available() == 6) {
-        uint16_t clutchValue = Wire.read() | (Wire.read() << 8);
-        uint16_t brakeValue = Wire.read() | (Wire.read() << 8);
-        uint16_t accelValue = Wire.read() | (Wire.read() << 8);
-
-        Joystick.setAxisValue(AXIS_CLUTCH, clutchValue);
-        Joystick.setAxisValue(AXIS_BRAKE, brakeValue);
-        Joystick.setAxisValue(AXIS_ACCELERATOR, accelValue);
-
-        // Joystick.setClutch(clutchValue);
-        // Joystick.setBrake(brakeValue);
-        // Joystick.setAccelerator(accelValue);
+        Joystick.setAxisValue(AXIS_CLUTCH, (Wire.read() | (Wire.read() << 8)));
+        Joystick.setAxisValue(AXIS_BRAKE, (Wire.read() | (Wire.read() << 8)));
+        Joystick.setAxisValue(AXIS_ACCELERATOR, (Wire.read() | (Wire.read() << 8)));
     }
 }
 
@@ -283,7 +256,6 @@ void processHandbrake()
         uint16_t buttons = Wire.read() | (Wire.read() << 8);
         
        Joystick.setAxisValue(AXIS_HANDBRAKE, handbrake);
-    //    Joystick.setRxAxis(handbrake);
 
         Joystick.setButton(23, isBitSet(buttons, 0)); 
     }
@@ -297,12 +269,12 @@ uint32_t readSteeringButtons() {
     uint32_t result = 0;
     byte byte1, byte2, byte3;
 
-    Wire.beginTransmission(I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS1);
-    Wire.write(0x00);
+    // Wire.beginTransmission(I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS1);
+    // Wire.write(0x00);
 
-    if (Wire.endTransmission() != 0) {
-        return result;
-    }
+    // if (Wire.endTransmission() != 0) {
+    //     return result;
+    // }
 
     Wire.requestFrom(I2C_ADDRESS_STEERING_BLOCK_WHEEL_BUTTONS1, 3);
 
@@ -465,20 +437,16 @@ void processStick()
     Wire.requestFrom(I2C_ADDRESS_STICK, 6);
 
     if (Wire.available() == 6) {
-        uint16_t vrx = Wire.read() | (Wire.read() << 8);
-        uint16_t vry = Wire.read() | (Wire.read() << 8);
-        uint16_t buttons = Wire.read() | (Wire.read() << 8);
+        Joystick.setAxisValue(AXIS_STICK1_X, (Wire.read() | (Wire.read() << 8)));
+        Joystick.setAxisValue(AXIS_STICK1_Y, (Wire.read() | (Wire.read() << 8)));
 
-        Joystick.setAxisValue(AXIS_STICK1_X, vrx);
-        Joystick.setAxisValue(AXIS_STICK1_Y, vry);
-        // Joystick.setSlider(vrx);
-        // Joystick.setDial(vry);
+        uint16_t buttons = Wire.read() | (Wire.read() << 8);
     }
 }
 
 void processForces()
 {
-    effectparams[0].springPosition = steeringFilteredValue - 512;
+    effectparams[0].springPosition = steeringValue - 512;
     // effectparams[1].springPosition = brakeFilteredValue;
 
     Joystick.setEffectParams(effectparams);
